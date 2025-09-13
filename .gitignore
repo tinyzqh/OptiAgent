@@ -1,3 +1,4 @@
 *.pdf
 *.png
+/datasets
 __pycache__
