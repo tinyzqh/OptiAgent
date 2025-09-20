@@ -16,7 +16,7 @@ from torch.utils.data import DataLoader
 # ===============================
 # Configuration & Hyperparameters
 # ===============================
-DATASET = "MNIST"   # or "CIFAR10"
+DATASET = "MNIST"  # or "CIFAR10"
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 DATASET_PATH = PROJECT_ROOT / "datasets"
 
@@ -70,15 +70,15 @@ class ConvBlock(nn.Conv2d):
     Returns:
         y: (N, C_out, H, W)
     """
-    def __init__(self, in_channels, out_channels, kernel_size, activation_fn=False, drop_rate=0.,
-                 stride=1, padding="same", dilation=1, groups=1, bias=True, gn=False, gn_groups=8):
-        
+
+    def __init__(
+        self, in_channels, out_channels, kernel_size, activation_fn=False, drop_rate=0.0, stride=1, padding="same", dilation=1, groups=1, bias=True, gn=False, gn_groups=8
+    ):
+
         if padding == "same":
             padding = kernel_size // 2 * dilation
 
-        super().__init__(in_channels, out_channels, kernel_size,
-                         stride=stride, padding=padding, dilation=dilation,
-                         groups=groups, bias=bias)
+        super().__init__(in_channels, out_channels, kernel_size, stride=stride, padding=padding, dilation=dilation, groups=groups, bias=bias)
 
         self.activation_fn = nn.SiLU() if activation_fn else None
         self.group_norm = nn.GroupNorm(gn_groups, out_channels) if gn else None
@@ -102,24 +102,19 @@ class ConditionalFlowMatching(nn.Module):
     Conditional Flow Matching (CFM) Model.
     Learns a vector field that transports Gaussian noise to target data distribution.
     """
-    def __init__(self, image_resolution, hidden_dims, sigma_min=0.):
+
+    def __init__(self, image_resolution, hidden_dims, sigma_min=0.0):
         super().__init__()
         _, _, img_C = image_resolution
 
         self.in_project = ConvBlock(img_C, hidden_dims[0], kernel_size=7)
-        self.time_project = nn.Sequential(
-            ConvBlock(1, hidden_dims[0], kernel_size=1, activation_fn=True),
-            ConvBlock(hidden_dims[0], hidden_dims[1], kernel_size=1)
-        )
+        self.time_project = nn.Sequential(ConvBlock(1, hidden_dims[0], kernel_size=1, activation_fn=True), ConvBlock(hidden_dims[0], hidden_dims[1], kernel_size=1))
 
         self.convs = nn.ModuleList()
         for idx in range(len(hidden_dims)):
             dilation = 3 ** ((idx - 1) // 2) if idx > 0 else 1
             in_channels = hidden_dims[idx - 1] if idx > 0 else hidden_dims[0]
-            self.convs.append(
-                ConvBlock(in_channels, hidden_dims[idx], kernel_size=3,
-                          dilation=dilation, activation_fn=True, gn=True, gn_groups=8)
-            )
+            self.convs.append(ConvBlock(in_channels, hidden_dims[idx], kernel_size=3, dilation=dilation, activation_fn=True, gn=True, gn_groups=8))
 
         self.out_project = ConvBlock(hidden_dims[-1], out_channels=img_C, kernel_size=3)
         self.sigma_min = sigma_min
@@ -167,9 +162,7 @@ class ConditionalFlowMatching(nn.Module):
 # ===============================
 # Training Setup
 # ===============================
-model = ConditionalFlowMatching(image_resolution=IMG_SIZE,
-                                hidden_dims=HIDDEN_DIMS,
-                                sigma_min=SIGMA_MIN).to(DEVICE)
+model = ConditionalFlowMatching(image_resolution=IMG_SIZE, hidden_dims=HIDDEN_DIMS, sigma_min=SIGMA_MIN).to(DEVICE)
 
 optimizer = AdamW(model.parameters(), lr=LR, betas=(0.9, 0.99))
 

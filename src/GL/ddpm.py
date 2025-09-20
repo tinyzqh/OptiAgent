@@ -24,7 +24,7 @@ DATASET_PATH = PROJECT_ROOT / "datasets"
 USE_CUDA = False
 DEVICE = torch.device("cuda" if USE_CUDA else "cpu")
 
-DATASET = "MNIST"   # Change to "CIFAR10" if needed
+DATASET = "MNIST"  # Change to "CIFAR10" if needed
 IMG_SIZE = (32, 32, 3) if DATASET == "CIFAR10" else (28, 28, 1)  # (H, W, C)
 
 TIME_EMB_DIM = 256
@@ -69,6 +69,7 @@ class SinusoidalPosEmb(nn.Module):
     """
     Sinusoidal Positional Embedding for diffusion timesteps.
     """
+
     def __init__(self, dim):
         super().__init__()
         self.dim = dim
@@ -86,15 +87,15 @@ class ConvBlock(nn.Conv2d):
     """
     Conv2D Block with optional GroupNorm and activation.
     """
-    def __init__(self, in_channels, out_channels, kernel_size, activation_fn=False, drop_rate=0.,
-                 stride=1, padding="same", dilation=1, groups=1, bias=True, gn=False, gn_groups=8):
-        
+
+    def __init__(
+        self, in_channels, out_channels, kernel_size, activation_fn=False, drop_rate=0.0, stride=1, padding="same", dilation=1, groups=1, bias=True, gn=False, gn_groups=8
+    ):
+
         if padding == "same":
             padding = kernel_size // 2 * dilation
 
-        super().__init__(in_channels, out_channels, kernel_size,
-                         stride=stride, padding=padding, dilation=dilation,
-                         groups=groups, bias=bias)
+        super().__init__(in_channels, out_channels, kernel_size, stride=stride, padding=padding, dilation=dilation, groups=groups, bias=bias)
 
         self.activation_fn = nn.SiLU() if activation_fn else None
         self.group_norm = nn.GroupNorm(gn_groups, out_channels) if gn else None
@@ -118,6 +119,7 @@ class Denoiser(nn.Module):
     """
     U-Net-like denoiser for predicting noise ε at timestep t.
     """
+
     def __init__(self, image_resolution, hidden_dims, diffusion_time_embedding_dim=256, n_times=1000):
         super().__init__()
         _, _, img_C = image_resolution
@@ -126,21 +128,14 @@ class Denoiser(nn.Module):
         self.in_project = ConvBlock(img_C, hidden_dims[0], kernel_size=7)
 
         self.time_project = nn.Sequential(
-            ConvBlock(diffusion_time_embedding_dim, hidden_dims[0], kernel_size=1, activation_fn=True),
-            ConvBlock(hidden_dims[0], hidden_dims[0], kernel_size=1)
+            ConvBlock(diffusion_time_embedding_dim, hidden_dims[0], kernel_size=1, activation_fn=True), ConvBlock(hidden_dims[0], hidden_dims[0], kernel_size=1)
         )
 
         self.convs = nn.ModuleList()
         for idx in range(len(hidden_dims)):
             dilation = 3 ** ((idx - 1) // 2) if idx > 0 else 1
             self.convs.append(
-                ConvBlock(hidden_dims[idx - 1] if idx > 0 else hidden_dims[0],
-                          hidden_dims[idx],
-                          kernel_size=3,
-                          dilation=dilation,
-                          activation_fn=True,
-                          gn=True,
-                          gn_groups=8)
+                ConvBlock(hidden_dims[idx - 1] if idx > 0 else hidden_dims[0], hidden_dims[idx], kernel_size=3, dilation=dilation, activation_fn=True, gn=True, gn_groups=8)
             )
 
         self.out_project = ConvBlock(hidden_dims[-1], out_channels=img_C, kernel_size=3)
@@ -163,6 +158,7 @@ class Diffusion(nn.Module):
     """
     Diffusion wrapper for forward noising and reverse denoising.
     """
+
     def __init__(self, model, image_resolution, n_times=1000, beta_minmax=[1e-4, 2e-2], device="cuda"):
         super().__init__()
         self.n_times = n_times
@@ -217,7 +213,7 @@ class Diffusion(nn.Module):
         sqrt_beta = self.extract(self.sqrt_betas, timestep, x_t.shape)
 
         x_t_minus_1 = 1 / sqrt_alpha * (x_t - (1 - alpha) / sqrt_one_minus_alpha_bar * epsilon_pred) + sqrt_beta * z
-        return x_t_minus_1.clamp(-1., 1)
+        return x_t_minus_1.clamp(-1.0, 1)
 
     def sample(self, N):
         x_t = torch.randn((N, self.img_C, self.img_H, self.img_W)).to(self.device)
@@ -230,15 +226,9 @@ class Diffusion(nn.Module):
 # ===============================
 # Training Setup
 # ===============================
-model = Denoiser(image_resolution=IMG_SIZE,
-                 hidden_dims=hidden_dims,
-                 diffusion_time_embedding_dim=TIME_EMB_DIM,
-                 n_times=N_TIMESTEPS).to(DEVICE)
+model = Denoiser(image_resolution=IMG_SIZE, hidden_dims=hidden_dims, diffusion_time_embedding_dim=TIME_EMB_DIM, n_times=N_TIMESTEPS).to(DEVICE)
 
-diffusion = Diffusion(model, image_resolution=IMG_SIZE,
-                      n_times=N_TIMESTEPS,
-                      beta_minmax=BETA_RANGE,
-                      device=DEVICE).to(DEVICE)
+diffusion = Diffusion(model, image_resolution=IMG_SIZE, n_times=N_TIMESTEPS, beta_minmax=BETA_RANGE, device=DEVICE).to(DEVICE)
 
 optimizer = Adam(diffusion.parameters(), lr=LR)
 criterion = nn.MSELoss()
