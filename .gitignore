@@ -2,3 +2,4 @@
 *.png
 /datasets
 __pycache__
+images
