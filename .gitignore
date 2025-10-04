@@ -5,3 +5,7 @@ __pycache__
 images
 /data
 *.pt
+*.tar.gz
+*.pth
+food-101/
+*.gif

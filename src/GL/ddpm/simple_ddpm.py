@@ -42,7 +42,7 @@ class ResBlock(nn.Module):
         self.dropout = nn.Dropout(p=dropout_prob, inplace=True)
 
     def forward(self, x, embeddings):
-        x = x + embeddings[:, :x.shape[1], :, :]
+        x = x + embeddings[:, : x.shape[1], :, :]
         r = self.conv1(self.relu(self.gnorm1(x)))
         r = self.dropout(r)
         r = self.conv2(self.relu(self.gnorm2(r)))
@@ -111,14 +111,7 @@ class UNET(nn.Module):
         self.relu = nn.ReLU(inplace=True)
         self.embeddings = SinusoidalEmbeddings(time_steps=time_steps, embed_dim=max(Channels))
         for i in range(self.num_layers):
-            layer = UnetLayer(
-                upscale=Upscales[i],
-                attention=Attentions[i],
-                num_groups=num_groups,
-                dropout_prob=dropout_prob,
-                C=Channels[i],
-                num_heads=num_heads,
-            )
+            layer = UnetLayer(upscale=Upscales[i], attention=Attentions[i], num_groups=num_groups, dropout_prob=dropout_prob, C=Channels[i], num_heads=num_heads)
             setattr(self, f"Layer{i+1}", layer)
 
     def forward(self, x, t):
@@ -155,16 +148,8 @@ def set_seed(seed: int = 42):
     random.seed(seed)
 
 
-def train(
-    batch_size: int = 64,
-    num_time_steps: int = 1000,
-    num_epochs: int = 15,
-    seed: int = -1,
-    ema_decay: float = 0.9999,
-    lr=2e-5,
-    checkpoint_path: str = None,
-):
-    set_seed(random.randint(0, 2**32 - 1)) if seed == -1 else set_seed(seed)
+def train(batch_size: int = 64, num_time_steps: int = 1000, num_epochs: int = 15, seed: int = -1, ema_decay: float = 0.9999, lr=2e-5, checkpoint_path: str = None):
+    set_seed(random.randint(0, 2 ** 32 - 1)) if seed == -1 else set_seed(seed)
 
     train_dataset = datasets.MNIST(root="./data", train=True, download=True, transform=transforms.ToTensor())
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, drop_last=True, num_workers=4)
@@ -198,11 +183,7 @@ def train(
             ema.update(model)
         print(f"Epoch {i+1} | Loss {total_loss / (60000 / batch_size):.5f}")
 
-    checkpoint = {
-        "weights": model.state_dict(),
-        "optimizer": optimizer.state_dict(),
-        "ema": ema.state_dict(),
-    }
+    checkpoint = {"weights": model.state_dict(), "optimizer": optimizer.state_dict(), "ema": ema.state_dict()}
     torch.save(checkpoint, "checkpoints/ddpm_checkpoint.pt")
 
 
@@ -234,17 +215,13 @@ def inference(checkpoint_path: str = None, num_time_steps: int = 1000, ema_decay
             z = torch.randn(1, 1, 32, 32)
             for t in reversed(range(1, num_time_steps)):
                 t = [t]
-                temp = scheduler.beta[t] / (
-                    (torch.sqrt(1 - scheduler.alpha[t])) * (torch.sqrt(1 - scheduler.beta[t]))
-                )
+                temp = scheduler.beta[t] / ((torch.sqrt(1 - scheduler.alpha[t])) * (torch.sqrt(1 - scheduler.beta[t])))
                 z = (1 / (torch.sqrt(1 - scheduler.beta[t]))) * z - (temp * model(z.cuda(), t).cpu())
                 if t[0] in times:
                     images.append(z)
                 e = torch.randn(1, 1, 32, 32)
                 z = z + (e * torch.sqrt(scheduler.beta[t]))
-            temp = scheduler.beta[0] / (
-                (torch.sqrt(1 - scheduler.alpha[0])) * (torch.sqrt(1 - scheduler.beta[0]))
-            )
+            temp = scheduler.beta[0] / ((torch.sqrt(1 - scheduler.alpha[0])) * (torch.sqrt(1 - scheduler.beta[0])))
             x = (1 / (torch.sqrt(1 - scheduler.beta[0]))) * z - (temp * model(z.cuda(), [0]).cpu())
 
             images.append(x)
