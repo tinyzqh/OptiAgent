@@ -9,3 +9,5 @@ images
 *.pth
 food-101/
 *.gif
+*.mp4
+lego

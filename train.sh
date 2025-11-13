@@ -1,0 +1,1 @@
+/home/labliu/anaconda3/envs/hzq/bin/python /home/labliu/hezhiqiang/OptiAgent/src/SL/nerf.py
