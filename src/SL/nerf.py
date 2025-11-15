@@ -664,6 +664,3 @@ for i in trange(start, N_iters):
         imageio.mimwrite(moviebase + "disp.mp4", to8b(disps / np.max(disps)), fps=30, quality=8)
 
     global_step += 1
-
-
-print("xx")
