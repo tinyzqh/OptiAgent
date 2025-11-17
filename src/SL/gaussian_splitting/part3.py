@@ -1,18 +1,17 @@
 import os
+import torch
+import pycolmap
+import numpy as np
+import torch.nn as nn
 from pathlib import Path
+import matplotlib.pyplot as plt
+from torch.utils.cpp_extension import load_inline
 
-from splat.read_colmap import read_images_text, qvec2rotmat
+
 from splat.gaussians import Gaussians
 from splat.gaussian_scene import GaussianScene
-import pycolmap
-import torch
-import torch.nn as nn
-import numpy as np
-
+from splat.read_colmap import read_images_text, qvec2rotmat
 from splat.utils import read_images_text, read_images_binary
-
-import os
-from matplotlib import pyplot as plt
 
 
 colmap_path = "treehill/sparse/0"
@@ -59,7 +58,6 @@ colors2d = np.array(colors2d)
 print(all_points3d.shape, points_in_3d.shape)
 gaussians = Gaussians(torch.Tensor(all_points3d), torch.Tensor(all_point_colors), model_path="point_clouds")
 
-import matplotlib.pyplot as plt
 
 scene = GaussianScene(colmap_path=colmap_path, gaussians=gaussians)
 
@@ -70,10 +68,6 @@ plt.gca().invert_yaxis()
 save_path = os.path.join(Path(__file__).resolve().parent, "part3_1.png")
 plt.savefig(save_path)
 
-
-import os
-from pathlib import Path
-from torch.utils.cpp_extension import load_inline
 
 project_path = Path(__file__).resolve().parent
 cuda_src = Path(os.path.join(project_path, "splat/c/render.cu")).read_text()
